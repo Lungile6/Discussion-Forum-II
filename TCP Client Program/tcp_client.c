@@ -2,46 +2,45 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h> //inet_pton
-#define PORT 8080
-#define SERVER_ADDRESS "127.0.0.1" //loopback address
+
+#define PORT 8000
+#define BUFFER_SIZE 1024
 
 int main() {
-    int sock = 0, valread;
-    struct sockaddr_in serv_addr;
-    char *message = "Hello from client";
-    char buffer[1024] = {0};
+    int sock;
+    struct sockaddr_in server_addr;
+    char buffer[BUFFER_SIZE];
 
-    // Creating socket file descriptor
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        return -1;
+    // Create socket
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
     }
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    // Server address setup
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton(AF_INET, SERVER_ADDRESS, &serv_addr.sin_addr)<=0) {
-        printf("\nInvalid address/ Address not supported \n");
-        return -1;
+    // Connect to server
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connection failed");
+        exit(EXIT_FAILURE);
     }
 
-    // Connecting to the server
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\nConnection Failed \n");
-        return -1;
+    // Communicate
+    while (1) {
+        printf("Enter message: ");
+        fgets(buffer, BUFFER_SIZE, stdin);
+        send(sock, buffer, strlen(buffer), 0);
+
+        memset(buffer, 0, BUFFER_SIZE);
+        recv(sock, buffer, BUFFER_SIZE, 0);
+        printf("Echoed: %s\n", buffer);
     }
 
-    // Sending the message
-    send(sock , message , strlen(message) , 0 );
-    printf("Message sent\n");
-
-    // Receiving the response
-    valread = read( sock , buffer, 1024);
-    printf("%s\n",buffer );
     close(sock);
     return 0;
 }
